@@ -34,7 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `totalCount` on `PaginationConnectionType` counted the relation it was handed, which root collections have already capped at `limit_max` (or at the `limit`/`offset` arguments) whenever `first`/`last` are not passed as variables (left out, or written inline like `first: 50`). Those lists reported 250, or the requested limit, instead of the real total. It now counts the relation without `limit`, `offset` and `order`, returns the number of groups for a grouped relation, and still uses `.size` when the items are not a relation. `cursors` still uses `items.size`.
+- `totalCount` on `PaginationConnectionType` counted the relation it was handed, which root collections have already capped at `limit_max` (or at the `limit`/`offset` arguments) whenever `first`/`last` are not passed as variables (left out, or written inline like `first: 50`). Those lists reported 250, or the requested limit, instead of the real total. It now counts the relation without `limit`, `offset` and `order`, returns the number of groups for a grouped relation, and still uses `.size` when the items are not a relation.
+- `cursors` had the same cap, so those lists only got cursors for their first 250 records (or the requested limit). It now builds one per page from the same full count, leaving out the records before the relation's offset, since the connection's cursors start after it. The count runs once for both fields.
 
 # [6.1.3] 2026-10-04
 

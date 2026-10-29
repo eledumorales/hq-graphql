@@ -191,4 +191,35 @@ describe ::HQ::GraphQL::PaginationConnectionType do
       expect(data["totalCount"]).to be 252
     end
   end
+
+  # Same cap as above: cursors must cover every page of the list, not just the
+  # records the relation is capped at.
+  context "cursors" do
+    def cursors(arguments)
+      results = schema.execute("{ testTypes(#{arguments}) { cursors } }")
+      results["data"]["testTypes"]["cursors"].map { |cursor| Base64.urlsafe_decode64(cursor).to_i }
+    end
+
+    it "covers every page with an inline first" do
+      expect(cursors("first: 50, sortOrder: ASC")).to eq [0, 50, 100, 150, 200, 250]
+    end
+
+    it "covers every page with first as a variable" do
+      results = schema.execute(query, variables: { first: 50, sortOrder: "ASC" })
+      decoded = results["data"]["testTypes"]["cursors"].map { |cursor| Base64.urlsafe_decode64(cursor).to_i }
+
+      expect(decoded).to eq [0, 50, 100, 150, 200, 250]
+    end
+
+    it "leaves out the records before the offset" do
+      expect(cursors("first: 50, offset: 10, sortOrder: ASC")).to eq [0, 50, 100, 150, 200]
+    end
+
+    it "pages to the records past the cap with the last cursor" do
+      last_cursor = schema.execute("{ testTypes(first: 50, sortOrder: ASC) { cursors } }")["data"]["testTypes"]["cursors"].last
+      results = schema.execute(query, variables: { first: 50, after: last_cursor, sortOrder: "ASC" })
+
+      expect(results["data"]["testTypes"]["nodes"].pluck("id")).to eq test_types.last(2).map(&:id)
+    end
+  end
 end
