@@ -14,8 +14,16 @@ module HQ
         end
       end
 
+      # Counts every record in the list, not just the ones a page can hold: root
+      # queries hand over a relation already capped at limit_max (or at the
+      # limit/offset arguments), so the cap is dropped before counting.
       def total_count
-        object.items.size
+        items = object.items
+        return items.size unless items.is_a?(::ActiveRecord::Relation)
+
+        count = items.unscope(:limit, :offset, :order).count(:all)
+        # A grouped relation counts per group
+        count.is_a?(Hash) ? count.size : count
       end
     end
   end

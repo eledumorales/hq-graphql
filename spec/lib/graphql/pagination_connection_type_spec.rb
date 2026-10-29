@@ -161,4 +161,34 @@ describe ::HQ::GraphQL::PaginationConnectionType do
       expect(total_count).to be 252
     end
   end
+
+  # The resolver caps the relation at limit_max (and applies limit/offset) when
+  # first/last don't come as variables, so totalCount must count past that cap.
+  context "totalCount" do
+    def execute(arguments)
+      results = schema.execute("{ testTypes(#{arguments}) { totalCount nodes { id } } }")
+      results["data"]["testTypes"]
+    end
+
+    it "counts every record without first and last" do
+      data = execute("sortOrder: ASC")
+
+      expect(data["nodes"].length).to be 250
+      expect(data["totalCount"]).to be 252
+    end
+
+    it "counts every record with an inline first" do
+      data = execute("first: 2, sortOrder: ASC")
+
+      expect(data["nodes"].length).to be 2
+      expect(data["totalCount"]).to be 252
+    end
+
+    it "counts every record with limit and offset" do
+      data = execute("limit: 10, offset: 5, sortOrder: ASC")
+
+      expect(data["nodes"].length).to be 10
+      expect(data["totalCount"]).to be 252
+    end
+  end
 end
